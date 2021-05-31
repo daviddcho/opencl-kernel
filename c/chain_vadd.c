@@ -83,7 +83,7 @@ int main(int argc, char** argv) {
     h_g[i] = rand() / (float)RAND_MAX;
   }
 
-  // Set up platform and GPU device
+  // Set up platform and GPU devices
   
   cl_uint numPlatforms;
   err = clGetPlatformIDs(0, NULL, &numPlatforms);
@@ -153,9 +153,9 @@ int main(int argc, char** argv) {
   d_c = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * count, NULL, &err);
   checkError(err, "Creating buffer d_c");
   d_d = clCreateBuffer(context, CL_MEM_READ_WRITE, sizeof(float) * count, NULL, &err);
-  checkError(err, "Creating buffer d_c");
+  checkError(err, "Creating buffer d_d");
   d_f = clCreateBuffer(context, CL_MEM_WRITE_ONLY, sizeof(float) * count, NULL, &err);
-  checkError(err, "Creating buffer d_c");
+  checkError(err, "Creating buffer d_f");
 
   // Write vectors into compute device memory 
   err = clEnqueueWriteBuffer(commands, d_a, CL_TRUE, 0, sizeof(float) * count, h_a, 0, NULL, NULL);
