@@ -13,6 +13,7 @@
 #endif
 
 #include "err_code.h"
+#include "mat_lib.h"
 
 #ifndef DEVICE
 #define DEVICE CL_DEVICE_TYPE_DEFAULT
@@ -20,10 +21,11 @@
 
 extern double wtime();
 extern int output_device_info(cl_device_id);
+void print_mat(float* A, int N);
 
 
 #define TOL   (0.0001)
-#define N     (32)
+#define N     (4)
 
 const char *kernel_source = "\n" \
 "__kernel void mmul(__global float *a, __global float *b, __global float *c, const int N) {\n" \
@@ -45,12 +47,11 @@ const char *kernel_source = "\n" \
 int main(int argc, char** argv) { 
   int err;
 
-  float* h_a = (float *) calloc(N, sizeof(float));
-  float* h_b = (float *) calloc(N, sizeof(float));
-  float* h_c = (float *) calloc(N, sizeof(float));
+  float* h_a = (float *) calloc(N*N, sizeof(float));
+  float* h_b = (float *) calloc(N*N, sizeof(float));
+  float* h_c = (float *) calloc(N*N, sizeof(float));
 
   //size_t global; 
-  
   cl_device_id device_id;
   cl_context context;
   cl_command_queue commands;
@@ -61,16 +62,19 @@ int main(int argc, char** argv) {
   cl_mem d_b;
   cl_mem d_c;
 
-  int i = 0;
-  int count = N;
+  // Fill in matrices
+  int i;
+  int count = N*N;
   for (i = 0; i < count; i++) {
     h_a[i] = rand() / (float)RAND_MAX;
     h_b[i] = rand() / (float)RAND_MAX;
-    //h_c[i] = rand() / (float)RAND_MAX;
   }
 
-  // Set up platform and GPU device
+  sequential_mat_mul(h_a, h_b, h_c, N);
+  print_mat(h_c, N);
+  
 
+  // Set up platform and GPU device
   cl_uint numPlatforms;
   err = clGetPlatformIDs(0, NULL, &numPlatforms);
   checkError(err, "Finding platforms");
@@ -101,11 +105,9 @@ int main(int argc, char** argv) {
   // Create a compute context
   context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
   checkError(err, "Creating context");
-
   // Create a command queue 
   commands = clCreateCommandQueue(context, device_id, 0, &err);
   checkError(err, "Creating command queue");
-
   // Create the compute program
   program = clCreateProgramWithSource(context, 1, (const char**) &kernel_source, NULL, &err);
   checkError(err, "Creating program");
@@ -169,21 +171,12 @@ int main(int argc, char** argv) {
   }
   
   printf("A:\n");
-  for (i = 0; i < count; i++) {
-    printf("%f ", h_a[i]);
-  }
-  printf("\n");
+  print_mat(h_a, N);
   printf("B:\n");
-  for (i = 0; i < count; i++) {
-    printf("%f ", h_b[i]);
-  }
-  printf("\n");
+  print_mat(h_b, N);
   printf("C:\n");
-  for (i = 0; i < count; i++) {
-    printf("%f ", h_c[i]);
-  }
-  printf("\n");
-
+  print_mat(h_c, N);
+  
   //printf("C = A*B: %d out of %d results were correct", test_results(h_a, h_b, h_c, count), count);
 
   clReleaseMemObject(d_a);

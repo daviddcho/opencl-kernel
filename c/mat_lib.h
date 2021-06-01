@@ -1,6 +1,7 @@
 #ifndef MAT_LIB
 #define MAT_LIB
 
-void zero_mat(int N, float *C);
+void sequential_mat_mul(float *A, float *B, float *C, int N);
+void zero_mat(float *C, int N);
 
 #endif 
