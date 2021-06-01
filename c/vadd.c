@@ -13,7 +13,6 @@
 #endif
 
 #include "err_code.h"
-#include "matrix_lib.h"
 
 // Pick up device type from compiler commd line or from the default type
 #ifndef DEVICE
