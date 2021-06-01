@@ -11,6 +11,7 @@
 #else
 #include <CL/cl.h>
 #endif
+
 #include "err_code.h"
 
 #ifndef DEVICE
@@ -20,8 +21,9 @@
 extern double wtime();
 extern int output_device_info(cl_device_id);
 
+
 #define TOL   (0.0001)
-#define N     (1024)
+#define N     (32)
 
 const char *kernel_source = "\n" \
 "__kernel void mmul(__global float *a, __global float *b, __global float *c, const int N) {\n" \
@@ -40,14 +42,14 @@ const char *kernel_source = "\n" \
 "}                                                    \n" \
 "\n";
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) { 
   int err;
 
   float* h_a = (float *) calloc(N, sizeof(float));
   float* h_b = (float *) calloc(N, sizeof(float));
   float* h_c = (float *) calloc(N, sizeof(float));
 
-  size_t global; 
+  //size_t global; 
   
   cl_device_id device_id;
   cl_context context;
@@ -137,18 +139,20 @@ int main(int argc, char** argv) {
   err = clEnqueueWriteBuffer(commands, d_b, CL_TRUE, 0, sizeof(float) *count, h_b, 0, NULL, NULL);
   checkError(err, "Copying h_b to device at d_b");
   
+
   // Set the arguments to our compute kernel
   err = clSetKernelArg(ko_mmul, 0, sizeof(cl_mem), &d_a);
-  err |= clSetKernelArg(ko_mmul, 0, sizeof(cl_mem), &d_b);
-  err |= clSetKernelArg(ko_mmul, 0, sizeof(cl_mem), &d_c);
-  err |= clSetKernelArg(ko_mmul, 0, sizeof(unsigned int), &count);
+  err |= clSetKernelArg(ko_mmul, 1, sizeof(cl_mem), &d_b);
+  err |= clSetKernelArg(ko_mmul, 2, sizeof(cl_mem), &d_c);
+  err |= clSetKernelArg(ko_mmul, 3, sizeof(unsigned int), &count);
   checkError(err, "Setting kernel arguments");
 
   double rtime = wtime();
   
   // Execute the kernel
-  global = count;
-  err = clEnqueueNDRangeKernel(commands, ko_mmul, 1, NULL, &global, NULL, 0, NULL, NULL);
+  const size_t global[2] = {N, N};
+  //global = count;
+  err = clEnqueueNDRangeKernel(commands, ko_mmul, 2, NULL, global, NULL, 0, NULL, NULL);
   checkError(err, "Enqueueing kernel"); 
 
   err = clFinish(commands);
@@ -163,9 +167,24 @@ int main(int argc, char** argv) {
     printf("Error: failed to read output array!\n%s\n", err_code(err));
     exit(1);
   }
+  
+  printf("A:\n");
+  for (i = 0; i < count; i++) {
+    printf("%f ", h_a[i]);
+  }
+  printf("\n");
+  printf("B:\n");
+  for (i = 0; i < count; i++) {
+    printf("%f ", h_b[i]);
+  }
+  printf("\n");
+  printf("C:\n");
+  for (i = 0; i < count; i++) {
+    printf("%f ", h_c[i]);
+  }
+  printf("\n");
 
-  //printf("C = A*B: %d out of %d results were correct");
-
+  //printf("C = A*B: %d out of %d results were correct", test_results(h_a, h_b, h_c, count), count);
 
   clReleaseMemObject(d_a);
   clReleaseMemObject(d_b);
@@ -179,8 +198,18 @@ int main(int argc, char** argv) {
   free(h_b);
   free(h_c);
   
-  
-
   return 0;
 }
+
+
+/*
+int test_results(float* h_a, float* h_b, float* h_c, int count) {
+  unsigned int correct = 0;
+  float tmp;
+  
+  // TODO: test
+  
+  return correct;
+}
+*/
 
