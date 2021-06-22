@@ -46,10 +46,11 @@ const char *kernel_source = "\n" \
 
 int main(int argc, char** argv) { 
   int err;
+  int size = N*N;
 
-  float* h_a = (float *) calloc(N*N, sizeof(float));
-  float* h_b = (float *) calloc(N*N, sizeof(float));
-  float* h_c = (float *) calloc(N*N, sizeof(float));
+  float* h_a = (float *) calloc(size, sizeof(float));
+  float* h_b = (float *) calloc(size, sizeof(float));
+  float* h_c = (float *) calloc(size, sizeof(float));
 
   //size_t global; 
   cl_device_id device_id;
@@ -62,15 +63,19 @@ int main(int argc, char** argv) {
   cl_mem d_b;
   cl_mem d_c;
 
+  srand(42);
+
   // Fill in matrices
   int i;
-  int count = N*N;
+  int count = size;
   for (i = 0; i < count; i++) {
     h_a[i] = rand() / (float)RAND_MAX;
     h_b[i] = rand() / (float)RAND_MAX;
   }
+  
 
   sequential_mat_mul(h_a, h_b, h_c, N);
+  printf("Sequential C\n");
   print_mat(h_c, N);
   
 
@@ -195,14 +200,4 @@ int main(int argc, char** argv) {
 }
 
 
-/*
-int test_results(float* h_a, float* h_b, float* h_c, int count) {
-  unsigned int correct = 0;
-  float tmp;
-  
-  // TODO: test
-  
-  return correct;
-}
-*/
 
