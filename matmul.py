@@ -27,16 +27,19 @@ __kernel void mmul(__global float *a, __global float *b, __global float *c, cons
 # i kinda forget how this weird vector mult works
 useprivatemem = """
 __kernel void mmul(__global float *a, __global float *b, __global float *c, const int N) {
-  
   int i = get_global_id(0);
   int k, j;
   float tmp;
+  float Awrk[1024];
   
   if ((i < N)) {
+    for (k = 0; k < N; k++) {
+      Awrk[k] = a[i*N+k];
+    }
     for (int j = 0; j < N; j++) {
       tmp = 0.0f;
       for (k = 0; k < N; k++) {
-        tmp += a[i * N + k] * b[k * N + j];
+        tmp += Awrk[k] * b[k * N + j];
       }
       c[i * N + j] = tmp;
     }
@@ -67,11 +70,6 @@ d_a = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, ho
 d_b = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=h_b)
 d_c = cl.Buffer(context, cl.mem_flags.WRITE_ONLY, h_c.nbytes)
 
-sequential(N,h_a,h_b,h_c)
-C = h_c
-print(C)
-h_c = np.empty(size).astype(np.float32)
-
 # Start the timer
 start_time = time() 
 
@@ -85,7 +83,6 @@ globalrange = (N, N)
 localrange = None
 
 #localmem = cl.LocalMemory(np.dtype(np.float32).itemsize * globalrange)
-
 mmul(queue, globalrange, localrange, d_a, d_b, d_c, N)
 queue.finish() 
 
@@ -97,14 +94,11 @@ cl.enqueue_copy(queue, h_c, d_c)
 
 # Do the calculation on the host for comparison
 # TODO: Testing could be better, maybe a test set or something?
-h_test = np.empty(size).astype(np.float32)
-#sequential(N, h_a, h_b, h_test)
+C = np.empty(size).astype(np.float32)
+#sequential(N, h_a, h_b, C)
 
-#print(h_test)
-#C = h_a @ h_b
-#print(C)
-print(h_c, h_c.shape)
+print(h_c)
 
-results(N, h_c, h_test, run_time)
-assert np.allclose(h_c, C)
+results(N, h_c, C, run_time)
+#assert np.allclose(h_c, C)
 
