@@ -6,7 +6,7 @@ from helper import *
 from time import time
 
 kernelsource = """
-__kernel void mmul(__global float *a, __global float *b, __global float *c, const int N) {
+__kernel void mmul(const int N, __global float *a, __global float *b, __global float *c) {
   
   int i = get_global_id(0);
   int j = get_global_id(1);
@@ -26,7 +26,7 @@ __kernel void mmul(__global float *a, __global float *b, __global float *c, cons
 # row using private memory now?
 # i kinda forget how this weird vector mult works
 useprivatemem = """
-__kernel void mmul(__global float *a, __global float *b, __global float *c, const int N) {
+__kernel void mmul(const int N, __global float *a, __global float *b, __global float *c) {
   int i = get_global_id(0);
   int k, j;
   float tmp;
@@ -47,6 +47,34 @@ __kernel void mmul(__global float *a, __global float *b, __global float *c, cons
 }
 """
 
+localmemory = """
+__kernel void mmul(const int N, __global float *a, __global float *b, __global float *c, __local float* Bwrk) {
+  int k, j; 
+  int i = get_global_id(0);
+  int iloc = get_local_id(0);
+  int nloc = get_local_size(0);
+  float Awrk[N];
+  float tmp;
+
+  if (i < N) {
+    for (k = 0; k < N; k++) {
+      Awrk[k] = a[i*N+k];
+    }
+    for (j = 0; j < N; j++) {
+      barrier(CLK_LOCAL_MEM_FENCE);
+      for (k = iloc; k < N; k += nloc)
+        Bwrk[k] = b[k*N+j];
+      barrier(CLK_LOCAL_MEM_FENCE);
+      tmp = 0.0f;
+      for (k = 0; k < N; k++) 
+        tmp += Awrk[k] * Bwrk[k];
+      c[i*N+j] = tmp;
+      barrier(CLK_LOCAL_MEM_FENCE);
+    }
+  }
+}
+"""
+
 N = LENGTH
 size = N*N
 
@@ -60,7 +88,7 @@ deviceinfo.output_device_info(context.devices[0])
 queue = cl.CommandQueue(context)
 
 # Create the compute program from the source buffer and build it
-program = cl.Program(context, useprivatemem).build() 
+program = cl.Program(context, localmemory).build() 
 
 h_a = np.random.rand(size).astype(np.float32) 
 h_b = np.random.rand(size).astype(np.float32) 
@@ -70,22 +98,23 @@ d_a = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, ho
 d_b = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=h_b)
 d_c = cl.Buffer(context, cl.mem_flags.WRITE_ONLY, h_c.nbytes)
 
+
 # Start the timer
 start_time = time() 
 
 # This is basically for the kernel args: 
 # None for the globals and specified for the non global I think
 mmul = program.mmul
-mmul.set_scalar_arg_dtypes([None, None, None, np.uint32])
+mmul.set_scalar_arg_dtypes([np.uint32, None, None, None, None])
 
 # Execute 
 #globalrange = (N, N)
+# why do we only pass one N? 
 globalrange = (N,)
 localrange = None
 
-
-#localmem = cl.LocalMemory(np.dtype(np.float32).itemsize * globalrange)
-mmul(queue, globalrange, localrange, d_a, d_b, d_c, N)
+localmem = cl.LocalMemory(np.dtype(np.float32).itemsize * N)
+mmul(queue, globalrange, localrange, N, d_a, d_b, d_c, localmem)
 
 queue.finish() 
 
