@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 // Sequential matrix multiplication
 void sequential_mat_mul(float *A, float *B, float *C, int N) {
@@ -34,4 +35,41 @@ void zero_mat(float *C, int N) {
       C[i * N + j] = 0.0f; 
   }
 }
+
+char* load_kernel(char *filename) {
+  FILE *fp;
+  long lSize;
+  char *buffer;
+
+  fp = fopen(filename, "rb");
+  if (!fp) {
+    perror("failed opening file");
+    exit(1);
+  }
+
+  fseek(fp, 0L, SEEK_END);
+  lSize = ftell(fp);
+  rewind(fp);
+
+  printf("%ld\n", lSize);
+
+  buffer = calloc(sizeof(char), lSize+1);
+  if (!buffer) {
+    fclose(fp);
+    fputs("memory alloc failed", stderr);
+    exit(1);
+  }
+
+  if (sizeof(char) != fread(buffer, lSize, sizeof(char), fp)) {
+    fclose(fp);
+    free(buffer);
+    fputs("entire read failed", stderr);
+    exit(1);
+  }
+
+  fclose(fp);
+  return buffer;
+}
+
+
 

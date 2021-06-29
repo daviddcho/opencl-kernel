@@ -25,8 +25,9 @@ void print_mat(float* A, int N);
 
 
 #define TOL   (0.0001)
-#define N     (4)
+#define N     (64)
 
+/*
 const char *kernel_source = "\n" \
 "__kernel void mmul(__global float *a, __global float *b, __global float *c, const int N) {\n" \
 "  int i = get_global_id(0);                         \n" \
@@ -37,16 +38,20 @@ const char *kernel_source = "\n" \
 "  if ((i < N) && (j < N)) {                         \n" \
 "    tmp = 0.0f;                                     \n" \
 "    for (k = 0; k < N; k++) {                       \n" \
-"      tmp += a[i * N + k] * b[k * N + j];           \n" \
+"      tmp += a[j * N + k] * b[k * N + i];           \n" \
 "    }                                               \n" \
-"    c[i * N + j] = tmp;                             \n" \
+"    c[j * N + i] = tmp;                             \n" \
 "  }                                                 \n" \
 "}                                                    \n" \
 "\n";
+*/
+
+
 
 int main(int argc, char** argv) { 
   int err;
   int size = N*N;
+  const char *kernel_source = load_kernel("kernel.cl");
 
   float* h_a = (float *) calloc(size, sizeof(float));
   float* h_b = (float *) calloc(size, sizeof(float));
@@ -107,13 +112,15 @@ int main(int argc, char** argv) {
   err = output_device_info(device_id);
   checkError(err, "Finding device output");
 
-  // Create a compute context
   context = clCreateContext(0, 1, &device_id, NULL, NULL, &err);
   checkError(err, "Creating context");
-  // Create a command queue 
+
   commands = clCreateCommandQueue(context, device_id, 0, &err);
   checkError(err, "Creating command queue");
-  // Create the compute program
+
+
+  //load_kernel("kernel.cl", &kernel_source);
+
   program = clCreateProgramWithSource(context, 1, (const char**) &kernel_source, NULL, &err);
   checkError(err, "Creating program");
 
@@ -157,9 +164,10 @@ int main(int argc, char** argv) {
   double rtime = wtime();
   
   // Execute the kernel
-  const size_t global[2] = {N, N};
+  const size_t global_work_size[2] = {N, N};
+  //const size_t local_work_size[2] = {16, 16};
   //global = count;
-  err = clEnqueueNDRangeKernel(commands, ko_mmul, 2, NULL, global, NULL, 0, NULL, NULL);
+  err = clEnqueueNDRangeKernel(commands, ko_mmul, 2, NULL, global_work_size, NULL, 0, NULL, NULL);
   checkError(err, "Enqueueing kernel"); 
 
   err = clFinish(commands);
