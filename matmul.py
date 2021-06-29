@@ -30,7 +30,7 @@ __kernel void mmul(__global float *a, __global float *b, __global float *c, cons
   int i = get_global_id(0);
   int k, j;
   float tmp;
-  float Awrk[1024];
+  float Awrk[N];
   
   if ((i < N)) {
     for (k = 0; k < N; k++) {
@@ -60,7 +60,7 @@ deviceinfo.output_device_info(context.devices[0])
 queue = cl.CommandQueue(context)
 
 # Create the compute program from the source buffer and build it
-program = cl.Program(context, kernelsource).build() 
+program = cl.Program(context, useprivatemem).build() 
 
 h_a = np.random.rand(size).astype(np.float32) 
 h_b = np.random.rand(size).astype(np.float32) 
@@ -79,11 +79,14 @@ mmul = program.mmul
 mmul.set_scalar_arg_dtypes([None, None, None, np.uint32])
 
 # Execute 
-globalrange = (N, N)
+#globalrange = (N, N)
+globalrange = (N,)
 localrange = None
+
 
 #localmem = cl.LocalMemory(np.dtype(np.float32).itemsize * globalrange)
 mmul(queue, globalrange, localrange, d_a, d_b, d_c, N)
+
 queue.finish() 
 
 run_time = time() - start_time
