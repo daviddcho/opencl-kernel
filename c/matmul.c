@@ -25,7 +25,7 @@ void print_mat(float* A, int N);
 
 
 #define TOL   (0.0001)
-#define N     (64)
+#define N     (16)
 
 /*
 const char *kernel_source = "\n" \
@@ -154,11 +154,12 @@ int main(int argc, char** argv) {
   checkError(err, "Copying h_b to device at d_b");
   
 
+  int dim = N;
   // Set the arguments to our compute kernel
   err = clSetKernelArg(ko_mmul, 0, sizeof(cl_mem), &d_a);
   err |= clSetKernelArg(ko_mmul, 1, sizeof(cl_mem), &d_b);
   err |= clSetKernelArg(ko_mmul, 2, sizeof(cl_mem), &d_c);
-  err |= clSetKernelArg(ko_mmul, 3, sizeof(unsigned int), &count);
+  err |= clSetKernelArg(ko_mmul, 3, sizeof(int), &dim);
   checkError(err, "Setting kernel arguments");
 
   double rtime = wtime();
@@ -167,7 +168,11 @@ int main(int argc, char** argv) {
   const size_t global_work_size[2] = {N, N};
   //const size_t local_work_size[2] = {16, 16};
   //global = count;
-  err = clEnqueueNDRangeKernel(commands, ko_mmul, 2, NULL, global_work_size, NULL, 0, NULL, NULL);
+  err = clEnqueueNDRangeKernel(
+    commands, ko_mmul, 
+    2, NULL, 
+    global_work_size, NULL, 
+    0, NULL, NULL);
   checkError(err, "Enqueueing kernel"); 
 
   err = clFinish(commands);

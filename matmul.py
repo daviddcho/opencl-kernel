@@ -25,7 +25,7 @@ __kernel void mmul(const int N, __global float *a, __global float *b, __global f
 
 # row using private memory now?
 # i kinda forget how this weird vector mult works
-useprivatemem = """
+pkernel = """
 __kernel void mmul(const int N, __global float *a, __global float *b, __global float *c) {
   int i = get_global_id(0);
   int k, j;
@@ -47,13 +47,13 @@ __kernel void mmul(const int N, __global float *a, __global float *b, __global f
 }
 """
 
-localmemory = """
+lkernel = """
 __kernel void mmul(const int N, __global float *a, __global float *b, __global float *c, __local float* Bwrk) {
   int k, j; 
   int i = get_global_id(0);
   int iloc = get_local_id(0);
   int nloc = get_local_size(0);
-  float Awrk[N];
+  float Awrk[1024];
   float tmp;
 
   if (i < N) {
@@ -80,15 +80,10 @@ size = N*N
 
 # Create a compute context
 context = cl.create_some_context() 
-
-# Print out device info
 deviceinfo.output_device_info(context.devices[0])
 
-# Create a command queue
 queue = cl.CommandQueue(context)
-
-# Create the compute program from the source buffer and build it
-program = cl.Program(context, localmemory).build() 
+program = cl.Program(context, lkernel).build() 
 
 h_a = np.random.rand(size).astype(np.float32) 
 h_b = np.random.rand(size).astype(np.float32) 
@@ -98,23 +93,23 @@ d_a = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, ho
 d_b = cl.Buffer(context, cl.mem_flags.READ_ONLY | cl.mem_flags.COPY_HOST_PTR, hostbuf=h_b)
 d_c = cl.Buffer(context, cl.mem_flags.WRITE_ONLY, h_c.nbytes)
 
-
-# Start the timer
 start_time = time() 
 
-# This is basically for the kernel args: 
-# None for the globals and specified for the non global I think
 mmul = program.mmul
 mmul.set_scalar_arg_dtypes([np.uint32, None, None, None, None])
+#mmul.set_scalar_arg_dtypes([np.uint32, None, None, None])
+
+
 
 # Execute 
-#globalrange = (N, N)
+globalrange = (N, N)
 # why do we only pass one N? 
-globalrange = (N,)
+#globalrange = (N,)
 localrange = None
 
 localmem = cl.LocalMemory(np.dtype(np.float32).itemsize * N)
 mmul(queue, globalrange, localrange, N, d_a, d_b, d_c, localmem)
+#mmul(queue, globalrange, localrange, N, d_a, d_b, d_c)
 
 queue.finish() 
 
@@ -124,8 +119,6 @@ run_time = time() - start_time
 # Read back the results from the compute device
 cl.enqueue_copy(queue, h_c, d_c)
 
-# Do the calculation on the host for comparison
-# TODO: Testing could be better, maybe a test set or something?
 C = np.empty(size).astype(np.float32)
 #sequential(N, h_a, h_b, C)
 
