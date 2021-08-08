@@ -25,7 +25,7 @@ void print_mat(float* A, int N);
 
 
 #define TOL   (0.0001)
-#define N     (16)
+#define N     (32)
 
 /*
 const char *kernel_source = "\n" \

@@ -1,7 +1,7 @@
 import numpy
 
 TOL = 0.0001
-LENGTH = 1024
+LENGTH = 16
 AVAL, BVAL = 3.0, 5.0
 
 # Function to compute the matrix product
