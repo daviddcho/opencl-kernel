@@ -57,5 +57,5 @@ print(h_c)
 C = np.empty(size).astype(np.float32)
 sequential(N, h_a, h_b, C)
 
-results(N, h_c, C, run_time)
+flops(N, run_time)
 assert np.allclose(h_c, C)
